@@ -1,9 +1,13 @@
+import sys
 import subprocess
 
 auto_command = """
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 export HF_HOME="./datasets/"
 export HF_ENDPOINT=https://hf-mirror.com
+export PYTHONPATH={tiny_pretrainer_path}:$PYTHONPATH
+export HF_DATASETS_TRUST_REMOTE_CODE=1
+export HF_DATASETS_OFFLINE=1
 
 echo "Start evaluation"
 echo "CUDA_VISIBLE_DEVICES: $CUDA_VISIBLE_DEVICES"
@@ -15,7 +19,7 @@ accelerate launch \\
     --num_machines=1 \\
     --main_process_port=29502 \\
     -m \\
-    lm_eval --model HFLM \\
+    lm_eval --model hf \\
     --model_args pretrained={model},tokenizer={model},trust_remote_code=True \\
     --tasks {tasks} \\
     --log_samples \\
@@ -24,8 +28,9 @@ accelerate launch \\
     {meta_data} \\
 """
 
-def launch_eval(model, tasks, proj_name, batch_size="", meta_data=""):
+def launch_eval(tiny_pretrainer_path, model, tasks, proj_name, batch_size="", meta_data="", stdout=sys.stdout, stderr=sys.stderr):
     command = auto_command.format(
+        tiny_pretrainer_path=tiny_pretrainer_path,
         model=model,
         tasks=",".join(tasks),
         proj_name=proj_name,
@@ -34,7 +39,7 @@ def launch_eval(model, tasks, proj_name, batch_size="", meta_data=""):
     )
 
     try:
-        subprocess.run(command, shell=True, check=True)
+        subprocess.run(command, shell=True, check=True, stdout=stdout, stderr=stderr)
     except subprocess.CalledProcessError as e:
         print('=' * 20)
         print(f"An error occurred while executing the command: {e}")
